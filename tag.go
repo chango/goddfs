@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 )
 
+// Struct for tag information unmarshaling
 type DDFSTag struct {
 	Version      int               `json:"version"`
 	ID           string            `json:"id"`
@@ -15,17 +15,43 @@ type DDFSTag struct {
 	UserData     map[string]string `json:"user-data"`
 }
 
+// Struct for pushing and tagging operations
+type TagConfig struct {
+	Delayed string
+	Update  string
+}
+
+// Get a new tag config for use with pushing
+func NewTagConfig(d bool, u bool) *TagConfig {
+	var delayed string = ""
+	var update string = ""
+	if d {
+		delayed = "1"
+	}
+	if u {
+		update = "1"
+	}
+	return &TagConfig{
+		delayed,
+		update,
+	}
+}
+
 // Get all the tag information
-func GetTagAttrs(ddfs *DDFSClient, tag string) *DDFSTag {
+func GetTag(ddfs *DDFSClient, tag string) (*DDFSTag, error) {
 	url := fmt.Sprintf("http://%s/ddfs/tag/%s", ddfs.Url, tag)
 	data, err := ddfs.Communicate("GET", url, nil)
+	if err != nil {
+		errStr := fmt.Sprintf("Failed to get tag: %s", err)
+		return nil, errors.New(errStr)
+	}
 	var dData DDFSTag
 	err = json.Unmarshal(data, &dData)
 	if err != nil {
-		log.Println("Failed to decode DDFS response", err)
-		return nil
+		errStr := fmt.Sprintf("Failed to decode DDFS response: %s", err)
+		return nil, errors.New(errStr)
 	}
-	return &dData
+	return &dData, nil
 }
 
 // Set a tag attribute
@@ -55,8 +81,8 @@ func DelTagAttr(ddfs *DDFSClient, tag string, attr string) error {
 }
 
 // Tag the blobs to DDFS
-func TagBlobs(ddfs *DDFSClient, tag string, u [][]string, delayed string, update string) ([]byte, [][]string, error) {
-	url := fmt.Sprintf("http://%s/ddfs/tag/%s?delayed=%s&update=%s", ddfs.Url, tag, delayed, update)
+func TagBlobs(ddfs *DDFSClient, tag string, u [][]string, conf *TagConfig) ([]byte, [][]string, error) {
+	url := fmt.Sprintf("http://%s/ddfs/tag/%s?delayed=%s&update=%s", ddfs.Url, tag, conf.Delayed, conf.Update)
 	urls, err := json.Marshal(u)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to marshal urls: %s", err)
@@ -68,4 +94,30 @@ func TagBlobs(ddfs *DDFSClient, tag string, u [][]string, delayed string, update
 		return nil, nil, errors.New(errStr)
 	}
 	return t, u, nil
+}
+
+func ListTags(ddfs *DDFSClient, prefix string) ([]string, error) {
+	tagList := new([]string)
+	url := fmt.Sprintf("http://%s/ddfs/tags/%s", ddfs.Url, prefix)
+	d, err := ddfs.Communicate("GET", url, nil)
+	if err != nil {
+		errStr := fmt.Sprintf("Failed to list tags: %s", err)
+		return nil, errors.New(errStr)
+	}
+	err = json.Unmarshal(d, tagList)
+	if err != nil {
+		errStr := fmt.Sprintf("Failed to unmarshal tag list: %s", err)
+		return nil, errors.New(errStr)
+	}
+	return *tagList, nil
+}
+
+func TagDelete(ddfs *DDFSClient, tag string) error {
+	url := fmt.Sprintf("http://%s/ddfs/tag/%s", ddfs.Url, tag)
+	_, err := ddfs.Communicate("DELETE", url, nil)
+	if err != nil {
+		errStr := fmt.Sprintf("Failed to delete tag: %s", err)
+		return errors.New(errStr)
+	}
+	return nil
 }

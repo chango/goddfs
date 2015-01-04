@@ -12,7 +12,7 @@ func main() {
 	// Set a tag attribute of "test" to "test attribute"
 	ddfs.SetTagAttr("test:tag", "test", "test attribute")
 	// Get all the tag attributes and print them
-	attrs := ddfs.GetTagAttrs("test:tag")
+	attrs, _ := ddfs.GetTagAttrs("test:tag")
 	for k, v := range attrs {
 		fmt.Printf("ATTR: %s\tVAL: %s\n", k, v)
 	}
@@ -26,12 +26,26 @@ func main() {
 	if err != nil {
 		fmt.Println("BAD DEL ", err)
 	}
-	// Chunk /tmp/testfile.txt to test:tag with a chunk size of 6 MB and 3 replicas
-	urls, err := ddfs.Chunk("test:tag", []string{"/tmp/testfile.txt"}, 3, true, goddfs.MEGABYTE*6)
+	// New tag config with delayed true
+	tconf := goddfs.NewTagConfig(true, false)
+	// Chunk /tmp/testfile.txt to test:tag with a chunk size of 6 MB
+	urls, err := ddfs.Chunk("test:tag", []string{"/tmp/testfile.txt"}, goddfs.MEGABYTE*6, tconf)
 	if err != nil {
 		fmt.Println("Bad chunk: ", err)
 	}
 	fmt.Println("Blob URLS: ", urls)
 	// Tag the blobs that went into test:tag to test:tag2
-	ddfs.Tag("test:tag2", urls, false, false)
+	ddfs.Tag("test:tag2", urls, tconf)
+	// Delete the tag we just created
+	ddfs.Delete("test:tag2")
+	// Push the files without chunking into DDFS
+	uu, err := ddfs.Push("test:tag:3", []string{"/tmp/testfile2.txt"}, tconf)
+	if err != nil {
+		fmt.Println("Bad push: ", err)
+	}
+	// List all tags starting with test
+	tags, _ := ddfs.List("test")
+	for _, tag := range tags {
+		fmt.Println("Found Tag: ", tag)
+	}
 }

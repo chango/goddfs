@@ -25,13 +25,14 @@ if err != nil {
 }
 
 // Get tag attributes
-attrs := ddfs.GetTagAttrs("test:tag")
+attrs, _ := ddfs.GetTagAttrs("test:tag")
 for k, v := range attrs {
     fmt.Printf("ATTR: %s\tVAL: %s\n", k, v)
 }
 
 // Get single tag attribute
-fmt.Println(ddfs.GetTagAttr("test:tag", "test"))
+aaa, _ := ddfs.GetTagAttr("test:tag", "test")
+fmt.Println(aaa)
 
 // Delete tag attribute
 err = ddfs.DelTagAttr("test:tag", "test") 
@@ -39,8 +40,11 @@ if err != nil {
     fmt.Printf("Failed to del attr: %s\n", err)
 }
 
-// Chunk to DDFS (tag, path_to_file, replicas, delayed, chunk_size)
-urls, err := ddfs.Chunk("test:tag", []string{"/tmp/fileofstuff"}, 3, true, 1048576)
+// Create the tag operation config (delayed bool, update bool)
+tconf := goddfs.NewTagConfig(true, false)
+
+// Chunk to DDFS (tag, path_to_file, chunk_size, tag_config)
+urls, err := ddfs.Chunk("test:tag", []string{"/tmp/fileofstuff"}, 1048576, tconf)
 if err != nil {
     fmt.Printf("Failed to chunk: %s\n", err)
 }
@@ -48,5 +52,5 @@ if err != nil {
 fmt.Println("Chunked to: ", urls)
 
 // Tag chunked blobs to another tag
-ddfs.Tag("test:tag2", urls, false, false)
+ddfs.Tag("test:tag2", urls, tconf)
 ```

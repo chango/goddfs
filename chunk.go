@@ -16,32 +16,40 @@ type Chunker struct {
 	OutputStream *DiscoOutputStream
 	Location     string
 	Index        int
+	ChunkSize    int
+	TagConf      *TagConfig
 }
 
 // Returns a new Chunker struct for chunking data
-func NewChunker(ddfs *DDFSClient, loc string) *Chunker {
+func NewChunker(ddfs *DDFSClient, loc string, size int, conf *TagConfig) *Chunker {
 	var u [][]string
 	// Open the file for reading
 	f, err := os.Open(loc)
 	if err != nil {
 		log.Fatal("Failed to open file ", loc, " :", err)
 	}
-	scanner := bufio.NewScanner(f)
-	o := NewOutputStream(scanner)
-	return &Chunker{
-		ddfs,
-		u,
-		scanner,
-		o,
-		loc,
-		0,
+	c := &Chunker{}
+	c.DDFS = ddfs
+	c.Urls = u
+	c.Scanner = bufio.NewScanner(f)
+	c.OutputStream = NewOutputStream(c.Scanner)
+	c.Location = loc
+	c.Index = 0
+	c.ChunkSize = size
+
+	if conf == nil {
+		c.TagConf = NewTagConfig(false, false)
+	} else {
+		c.TagConf = conf
 	}
+	return c
+
 }
 
 // Iterates through the file, flushing when the chunk size (cs) is reached
-func (chunker *Chunker) ChunkIter(tag string, cs int) {
+func (chunker *Chunker) ChunkIter(tag string) {
 	for chunker.OutputStream.Stream.Scan() {
-		if chunker.OutputStream.Size() > cs {
+		if chunker.OutputStream.Size() > chunker.ChunkSize {
 			chunker.Flush()
 			chunker.Index += 1
 		}
@@ -64,19 +72,19 @@ func (chunker *Chunker) Flush() {
 }
 
 // Chunk the files denoted by urls []string to a DDFS tag
-func ChunkToTag(ddfs *DDFSClient, tag string, urls []string, replicas int, delayed bool, size int) ([][]string, error) {
+func ChunkToTag(ddfs *DDFSClient, tag string, urls []string, size int, conf *TagConfig) ([][]string, error) {
 	var uu [][]string
 	for _, url := range urls {
 		// TODO: Make this concurrent
 
 		// For each file to upload, create new Chunker
-		c := NewChunker(ddfs, url)
+		c := NewChunker(ddfs, url, size, conf)
 
 		// Run through the file and append urls as we upload them to DDFS
-		c.ChunkIter(tag, size)
+		c.ChunkIter(tag)
 
 		// Tag all the blobs we uploaded
-		_, _, err := TagBlobs(ddfs, tag, c.Urls, "", "")
+		_, _, err := TagBlobs(ddfs, tag, c.Urls, c.TagConf)
 		if err != nil {
 			errStr := fmt.Sprintf("Chunk failed: %s", err)
 			return nil, errors.New(errStr)
