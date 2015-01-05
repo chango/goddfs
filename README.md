@@ -3,6 +3,8 @@ goddfs is a Go API for Disco DDFS. Requires https://github.com/hydrogen18/stalec
 
 WARNING: This is still under development and is subject to change.
 
+GODOC: https://godoc.org/github.com/chango/goddfs
+
 ### Usage
 ```
 go get github.com/chango/goddfs
