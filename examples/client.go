@@ -1,7 +1,7 @@
 package main
 
 import "fmt"
-import "goddfs"
+import "github.com/chango/goddfs"
 import "time"
 
 func main() {

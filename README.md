@@ -5,12 +5,12 @@ WARNING: This is still under development and is subject to change.
 
 ### Usage
 ```
-go get github.com/oldmantaiter/goddfs
+go get github.com/chango/goddfs
 go get github.com/hydrogen18/stalecucumber
 ```
 
 ```go
-import "github.com/oldmantaiter/goddfs"
+import "github.com/chango/goddfs"
 import "time"
 import "fmt"
 ...
